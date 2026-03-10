@@ -3,6 +3,8 @@ import Cookies from "js-cookie";
 
 export const BASE_URL = `http://${window.location.hostname}:8000`;
 
+export const WS_URL = `ws://${window.location.hostname}:8000`;
+
 let tokenInvalidCallback = null;
 export const setTokenInvalidCallback = (callback) => {
   tokenInvalidCallback = callback;

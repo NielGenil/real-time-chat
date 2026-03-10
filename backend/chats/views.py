@@ -3,7 +3,7 @@ from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Conversation, Message
-from .serializers import ConversationSerializer, MessageSerializer
+from .serializers import ConversationSerializer, MessageSerializer, NewMessageSerializer, ConversationWithMessageSerializer
 from accounts.models import CustomUser
 # Create your views here.
 
@@ -28,7 +28,6 @@ class StartConversationView(APIView):
         serializer = ConversationSerializer(conversation, context={"request": request})
         return Response(serializer.data)
 
-
 class ConversationListView(generics.ListAPIView):
     serializer_class = ConversationSerializer
 
@@ -43,24 +42,30 @@ class ConversationListCreate(generics.ListCreateAPIView):
 
 class ConversationRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = Conversation.objects.all()
-    serializer_class = ConversationSerializer
+    serializer_class = ConversationWithMessageSerializer
 
-class MessageListCreate(generics.ListCreateAPIView):
-    serializer_class = MessageSerializer
+class NewMessageListCreate(generics.ListCreateAPIView):
+    serializer_class = NewMessageSerializer
 
     def get_queryset(self):
-        conversation_id = self.kwargs["conversation_id"]
+        user = self.request.user
 
-        return Message.objects.filter(
-            conversation_id=conversation_id
-        )
+        return Message.objects.filter(conversation__participants=user)
 
     def perform_create(self, serializer):
-        conversation_id = self.kwargs["conversation_id"]
-        conversation = Conversation.objects.get(id=conversation_id)
+        sender = self.request.user
+        receiver_id = self.request.data.get("receiver_id")
 
-        serializer.save(
-            sender=self.request.user,
-            conversation=conversation
-        )
+        receiver = CustomUser.objects.get(id=receiver_id)
 
+        conversation = Conversation.objects.filter(participants=sender).filter(participants=receiver).first()
+
+        if not conversation:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(sender, receiver)
+
+        serializer.save(sender=sender, conversation=conversation)
+
+class MessageListCreate(generics.ListCreateAPIView):
+    queryset = Message.objects.all()
+    serializer_class = MessageSerializer

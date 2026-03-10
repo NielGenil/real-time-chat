@@ -57,6 +57,8 @@ DEV_MODE = False
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",          # must be FIRST (before django.contrib.staticfiles)
+    "channels",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -81,6 +83,18 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+ASGI_APPLICATION = "core.asgi.application"   # change 'myproject' to your project name
+
+# Channel layers — Redis backend (recommended for production)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    }
+}
 
 CORS_ALLOW_ALL_ORIGINS = True
 

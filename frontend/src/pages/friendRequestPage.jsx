@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getCurrentUserAPI,
   getFriendRequestListAPI,
@@ -10,35 +10,42 @@ import {
 import { useHelper } from "../hooks/useHelper";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getConversationListAPI, postMessageAPI } from "../api/chatAPI";
+import { useWebSocket } from "../context/WebSocketContext";
 
 export default function FriendRequestPage() {
   const { token } = useHelper();
   const queryClient = useQueryClient();
-  const requestRef = useRef(null);
-  const [activeConversation, setActiveConversation] = useState(null);
 
-  const [addUserModal, setAddUserModal] = useState(false);
-  const [friendRequestId, setFriendRequestId] = useState({});
-  const [responded, setResponded] = useState("");
+  const [responded, setResponded] = useState({});
+  const { send, wsStatus, subscribe } = useWebSocket();
 
-  const { data: user } = useQuery({
-    queryKey: ["user-data"],
-    queryFn: () => getCurrentUserAPI(token),
-  });
-
-  const { data: userList } = useQuery({
-    queryKey: ["user-list"],
-    queryFn: () => getUserListAPI(token),
-  });
+  const [friendRequest, setFriendRequest] = useState([]);
 
   const { data: friendRequestList } = useQuery({
     queryKey: ["friend-request-list"],
     queryFn: () => getFriendRequestListAPI(token),
   });
 
-  const userFriendRequest = Array.isArray(friendRequestList)
-    ? friendRequestList
-    : [];
+  useEffect(() => {
+    if (friendRequestList) {
+      setFriendRequest(friendRequestList);
+    }
+  }, [friendRequestList]);
+
+  useEffect(() => {
+    const unsubscribe = subscribe((data) => {
+      if (data.type === "friend_request") {
+        const newRequest = data.friend_request;
+
+        setFriendRequest((prev) => [...prev, newRequest]);
+
+        console.log("New Friend Request", newRequest);
+        queryClient.invalidateQueries(["friend-request-list"]);
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribe, queryClient]);
 
   const { mutate: postAcceptRequest } = useMutation({
     mutationFn: (id) => postAcceptRequestAPI(token, id),
@@ -61,8 +68,9 @@ export default function FriendRequestPage() {
       console.error(err);
     },
   });
+  console.log(wsStatus);
 
-  console.log(friendRequestId);
+
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto ">
@@ -70,45 +78,52 @@ export default function FriendRequestPage() {
         <section className="flex justify-between">
           <h1>Friend Requests</h1>
         </section>
-        <form>
-          {friendRequestList?.map((friends) => (
-            <div className="flex justify-between" key={friends?.id}>
-              <div>{friends?.sender?.username}</div>
-              {responded === "" ? (
-                <div className="flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setResponded("declined");
-                      postDeclineRequest(friends.id);
-                    }}
-                  >
-                    Decline
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setResponded("accepted");
-                      postAcceptRequest(friends.id);
-                    }}
-                  >
-                    Accept
-                  </button>
-                </div>
-              ) : responded === "accepted" ? (
-                <div className="flex gap-2">
-                  <p>Accpeted</p>
-                </div>
-              ) : responded === "declined" ? (
-                <div className="flex gap-2">
-                  <p>Declined</p>
-                </div>
-              ) : (
-                ""
-              )}
-            </div>
-          ))}
-        </form>
+        {friendRequest?.map((friends) => (
+          <div className="flex justify-between" key={friends?.id}>
+            <div>{friends?.sender?.username}</div>
+
+            {responded[friends.id] === undefined ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setResponded((prev) => ({
+                      ...prev,
+                      [friends.id]: "declined",
+                    }));
+                    if (wsStatus !== "open") return;
+                    send({
+                      type: "decline_friend_request",
+                      friend_request_id: friends?.id,
+                    });
+                  }}
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setResponded((prev) => ({
+                      ...prev,
+                      [friends.id]: "accepted",
+                    }));
+                    if (wsStatus !== "open") return;
+                    send({
+                      type: "accept_friend_request",
+                      friend_request_id: friends?.id,
+                    });
+                  }}
+                >
+                  Accept
+                </button>
+              </div>
+            ) : responded[friends.id] === "accepted" ? (
+              <p>Accepted</p>
+            ) : (
+              <p>Declined</p>
+            )}
+          </div>
+        ))}
       </section>
 
       <section className="flex-1 w-full h-full">

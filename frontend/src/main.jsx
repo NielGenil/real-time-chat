@@ -8,6 +8,7 @@ import LoginPage from "./pages/login.jsx";
 import ChatPage from "./pages/chatPage.jsx";
 import ContactPage from "./pages/contactPage.jsx";
 import FriendRequestPage from "./pages/friendRequestPage.jsx";
+import { WebSocketProvider } from "./context/WebSocketContext.jsx";
 
 const queryClient = new QueryClient();
 
@@ -36,7 +37,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <WebSocketProvider>
       <RouterProvider router={router} />
+      </WebSocketProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

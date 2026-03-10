@@ -19,7 +19,7 @@ from django.urls import path
 
 from accounts.views import CurrentUserView, UserListView, SendFriendRequest, AcceptFriendRequest, DeclineFriendRequest, FriendRequestList
 
-from chats.views import ConversationListCreate, ConversationRetrieveUpdateDestroy, MessageListCreate, ConversationListView, StartConversationView
+from chats.views import ConversationListCreate, ConversationRetrieveUpdateDestroy, MessageListCreate, ConversationListView, StartConversationView, NewMessageListCreate
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -42,7 +42,8 @@ urlpatterns = [
     path('api/start-conversation/', StartConversationView.as_view()),
 
     # Message
-    path('api/message/<int:conversation_id>/', MessageListCreate.as_view(), name='message'),
+    path('api/new-message/', NewMessageListCreate.as_view(), name='new-message'),
+    path('api/message/', MessageListCreate.as_view(), name='message'),
 
     # Friend request
     path("api/friends/request/<int:user_id>/", SendFriendRequest.as_view()),

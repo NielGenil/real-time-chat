@@ -41,6 +41,7 @@ export const postFriendRequestAPI = async (token, formData, id) => {
     body: formData,
   });
   if (!response.ok) {
+    console.log(response);
     throw await response.json();
   }
 

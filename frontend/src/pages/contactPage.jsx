@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getCurrentUserAPI,
   getUserListAPI,
@@ -6,15 +6,23 @@ import {
 } from "../api/userAPI";
 import { useHelper } from "../hooks/useHelper";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { getConversationListAPI, postMessageAPI } from "../api/chatAPI";
+import {
+  getConversationListAPI,
+  postMessageAPI,
+  postNewMessageAPI,
+} from "../api/chatAPI";
+import { useWebSocket } from "../context/WebSocketContext";
 
 export default function ContactPage() {
   const { token } = useHelper();
+  const messageRef = useRef(null);
   const friendRequestRef = useRef(null);
-  const [activeConversation, setActiveConversation] = useState(null);
+  const [activeConversation, setActiveConversation] = useState(false);
 
   const [addUserModal, setAddUserModal] = useState(false);
-  const [userId, setUserId] = useState({});
+  const [userId, setUserId] = useState(null);
+
+  const { send, wsStatus, subscribe } = useWebSocket();
 
   const { data: user } = useQuery({
     queryKey: ["user-data"],
@@ -33,8 +41,8 @@ export default function ContactPage() {
 
   const userFriends = Array.isArray(user?.friends) ? user?.friends : [];
 
-  const { mutate: postFriendRequest } = useMutation({
-    mutationFn: ({formData, id}) => postFriendRequestAPI(token, formData, id),
+  const { mutate: postMessage } = useMutation({
+    mutationFn: ({ content, id }) => postNewMessageAPI(token, content, id),
     onSuccess: () => {
       console.log("success");
     },
@@ -43,16 +51,46 @@ export default function ContactPage() {
     },
   });
 
-  const submitFriendRequest = (e) => {
+  const { mutate: postFriendRequest } = useMutation({
+    mutationFn: ({ formData, id }) => postFriendRequestAPI(token, formData, id),
+    onSuccess: () => {
+      console.log("success");
+    },
+    onError: (err) => {
+      console.error(err);
+    },
+  });
+
+  useEffect(() => {
+    const unsubscribe = subscribe((data) => {
+      if (data.type === "friend_request") {
+        console.log("Friend request received", data.friend_request);
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribe]);
+
+  const submitMessage = (e) => {
     e.preventDefault();
 
-    const formData = new FormData(friendRequestRef.current);
-
+    const content = messageRef.current.content.value;
     const id = userId;
 
-    postFriendRequest({formData, id});
+    postMessage({ content, id });
   };
-  console.log(userFriends);
+
+  const submitFriendRequest = (receiverId) => {
+    console.log("sending friend request to:", receiverId);
+    console.log("ws status:", wsStatus);
+
+    if (wsStatus !== "open") return;
+
+    send({
+      type: "send_friend_request",
+      receiver_id: receiverId,
+    });
+  };
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto ">
@@ -63,21 +101,29 @@ export default function ContactPage() {
         </section>
         <div>
           {userFriends?.map((friends) => (
-            <div key={friends?.id}>{friends?.username}</div>
+            <div
+              onClick={() => {
+                setUserId(friends.id);
+                setActiveConversation(true);
+              }}
+              key={friends?.id}
+            >
+              {friends?.username}
+            </div>
           ))}
         </div>
       </section>
 
       <section className="flex-1 w-full h-full">
-        {/* {activeConversation ? (
+        {activeConversation ? (
           <form ref={messageRef} onSubmit={submitMessage}>
-            <input type="hidden" name="sender" defaultValue={user?.id} />
+            <input type="hidden" name="receiver_id" defaultValue={userId} />
             <input type="text" name="content" className="border" />
             <button type="submit">Send</button>
           </form>
         ) : (
           <div>Choose user</div>
-        )} */}
+        )}
       </section>
 
       {addUserModal && (
@@ -102,19 +148,21 @@ export default function ContactPage() {
                 <input type="hidden" name="sender" value={user.id} />
                 <input type="hidden" name="receiver" value={userId} />
 
-                {userList?.filter((u) => !userFriends.some((friend) => friend.id === u.id)) .map((userlist) => (
-                  <div key={userlist.id} className="flex justify-between">
-                    <p>{userlist?.username}</p>
-                    <button
-                      type="submit"
-                      onClick={() => {
-                        setUserId(userlist.id);
-                      }}
-                    >
-                      Add friend
-                    </button>
-                  </div>
-                ))}
+                {userList
+                  ?.filter(
+                    (u) => !userFriends.some((friend) => friend.id === u.id),
+                  )
+                  .map((userlist) => (
+                    <div key={userlist.id} className="flex justify-between">
+                      <p>{userlist?.username}</p>
+                      <button
+                        type="button"
+                        onClick={() => submitFriendRequest(userlist.id)}
+                      >
+                        Add friend
+                      </button>
+                    </div>
+                  ))}
               </form>
 
               <div className="flex flex-row-reverse gap-2">

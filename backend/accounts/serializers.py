@@ -13,6 +13,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
         model = CustomUser
         exclude = ['password']
 
+class CustomUserConfigureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["id", "username", "first_name", "last_name"]
+
 class FriendRequestSerializer(serializers.ModelSerializer):
     sender = CustomUserSerializer()
     receiver = CustomUserSerializer()
