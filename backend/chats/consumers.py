@@ -6,6 +6,9 @@ from channels.db import database_sync_to_async
 from .models import Conversation, Message
 from .serializers import MessageSerializer
 from django.db import IntegrityError
+from notifications.models import Notification
+from django.db.models import Count
+from django.db import transaction
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -53,7 +56,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         # ✅ Handle mark-as-read event
-        if event_type == 'mark_read':
+        if event_type == 'mark_read_message':
             try:
                 conversation_id = int(data.get('conversation_id'))
             except (TypeError, ValueError):
@@ -81,46 +84,67 @@ class ChatConsumer(AsyncWebsocketConsumer):
                             'user_id': self.user.id
                         }
                     )
-            print(conversation_id)
             return
         
         if event_type == "send_friend_request":
             receiver_id = data.get("receiver_id")
-
             result = await self.create_friend_request(receiver_id)
 
-            if not result:
-                return
-
-            friend_request, receiver_id = result
-
-            # Send notification to receiver
-            await self.channel_layer.group_send(
-                f"user_{receiver_id}",
-                {
-                    "type": "friend_request_event",
-                    "friend_request": friend_request
-                }
-            )
-
+            if result:
+                await self.channel_layer.group_send(
+                    f"user_{result['receiver_id']}",
+                    {
+                        "type": "friend_request_event",
+                        "friend_request": result['friend_request'],
+                        "notification_friend_request": result['notification_friend_request'],
+                    }
+                )
             return
         
         if event_type == 'accept_friend_request':
-            try:
-                friend_request_id = int(data.get('friend_request_id'))
-            except (TypeError, ValueError):
-                return
-            await self.accepted_friend_request(friend_request_id)
+          
+            friend_request_id = int(data.get('friend_request_id'))
+            receiver_id = data.get("receiver_id")
+           
+            result = await self.accepted_friend_request(friend_request_id)
 
-            
+            await self.channel_layer.group_send(
+                f"user_{receiver_id}",
+                {
+                    "type": "friend_request_response_event",
+                    "friend_request_id": friend_request_id,
+                    "receiver_id": receiver_id,
+                    "notification": result['notification'],
+                }
+            )
             return
         
         if event_type == 'decline_friend_request':
             try:
                 friend_request_id = int(data.get('friend_request_id'))
+                receiver_id = data.get("receiver_id")
             except (TypeError, ValueError):
                 return
-            await self.declined_friend_request(friend_request_id)
+            result = await self.declined_friend_request(friend_request_id)
+            await self.channel_layer.group_send(
+                f"user_{receiver_id}",
+                {
+                    "type": "friend_request_response_event",
+                    "friend_request_id": friend_request_id,
+                    "receiver_id": receiver_id,
+                    "notification": result['notification'],
+                }
+            )
+
+            
+            return
+        
+        if event_type == 'mark_read_notification':
+            try:
+                notification_id = int(data.get('notification_id'))
+            except (TypeError, ValueError):
+                return
+            await self.mark_notification_read(notification_id)
 
             
             return
@@ -165,7 +189,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def friend_request_event(self, event):
         await self.send(text_data=json.dumps({
             "type": "friend_request",
-            "friend_request": event["friend_request"]
+            "friend_request": event["friend_request"],
+            "notification_friend_request": event["notification_friend_request"],
+        }))
+
+    async def friend_request_response_event(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "friend_request_response",
+            "friend_request_id": event["friend_request_id"],
+            "receiver_id": event["receiver_id"],
+            "notification": event["notification"],
         }))
 
 
@@ -240,25 +273,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def create_friend_request(self, receiver_id):
         from accounts.models import FriendRequest
         from accounts.serializers import FriendRequestSerializer
+        from notifications.models import Notification
+        from notifications.serializers import NotificationSerializer # Assuming you have one
 
         try:
-            print("Creating friend request to:", receiver_id)
-
             receiver = self.user.__class__.objects.get(id=receiver_id)
-
+            
             friend_request, created = FriendRequest.objects.get_or_create(
                 sender=self.user,
                 receiver=receiver,
                 defaults={"status": "pending"}
             )
 
-            if not created:
-                print("Friend request already exists")
-                return None
+            if not created and friend_request.status == "declined":
+                friend_request.status = "pending"
+                friend_request.save()
 
-            print("Friend request created!")
+            # Create the notification and serialize it
+            notification = Notification.objects.create(
+                sender=self.user,
+                recipient=receiver,
+                notification_type="friend_request",
+                text=f"{self.user.username} sent you a friend request"
+            )
 
-            return FriendRequestSerializer(friend_request).data, receiver.id
+            return {
+                "friend_request": FriendRequestSerializer(friend_request).data,
+                "notification_friend_request": NotificationSerializer(notification).data,
+                "receiver_id": receiver.id
+            }
 
         except Exception as e:
             print("ERROR:", e)
@@ -267,25 +310,101 @@ class ChatConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def accepted_friend_request(self, friend_request_id):
         from accounts.models import FriendRequest
-        """
-        Accept User Friend Request
-        """
+        from notifications.models import Notification
+        from notifications.serializers import NotificationSerializer
 
-        updated = FriendRequest.objects.filter(
-            id=friend_request_id,
-        ).update(status="accepted")
+        try:
+            friend_request = FriendRequest.objects.get(id=friend_request_id)
 
-        return updated
+            # ✅ Prevent double accept
+            if friend_request.status == "accepted":
+                return {
+                    "notification": None,
+                    "receiver_id": friend_request.sender.id
+                }
+
+            sender = friend_request.sender
+            receiver = friend_request.receiver
+
+            # Update status
+            friend_request.status = "accepted"
+            friend_request.save()
+
+            # Add each other as friends
+            receiver.friends.add(sender)
+            sender.friends.add(receiver)
+
+            # Create notification
+            notification = Notification.objects.create(
+                sender=self.user,
+                recipient=sender,
+                notification_type="friend_request_accepted",
+                text=f"{self.user.username} accepted your friend request"
+            )
+
+            # Check if private conversation already exists
+            conversation = Conversation.objects.filter(
+                type="private",
+                participants=sender
+            ).filter(
+                participants=receiver
+            ).first()
+
+            # Create conversation if none exists
+            if not conversation:
+                conversation = Conversation.objects.create(type="private")
+                conversation.participants.add(sender, receiver)
+
+            return {
+                "notification": NotificationSerializer(notification).data,
+                "receiver_id": sender.id
+            }
+
+        except FriendRequest.DoesNotExist:
+            return False
+
     
     @database_sync_to_async
     def declined_friend_request(self, friend_request_id):
         from accounts.models import FriendRequest
+        from notifications.serializers import NotificationSerializer # Assuming you have one
         """
         Declined User Friend Request
         """
 
-        updated = FriendRequest.objects.filter(
-            id=friend_request_id,
-        ).update(status="declined")
+        try:
+            # Get the FriendRequest instance
+            friend_request = FriendRequest.objects.get(id=friend_request_id)
 
-        return updated
+            # Update status
+            friend_request.status = "declined"
+            friend_request.save()
+
+
+            notification = Notification.objects.create(
+                sender=self.user,
+                recipient=friend_request.sender,
+                notification_type="friend_request_declined",
+                text=f"{self.user.username} decline your friend request"
+            )
+
+
+            return {
+                "notification": NotificationSerializer(notification).data,
+                "receiver_id": friend_request.sender.id
+            }
+        except FriendRequest.DoesNotExist:
+            return False
+    
+    @database_sync_to_async
+    def mark_notification_read(self, notification_id):
+        """
+        ✅ Mark all unread messages in this conversation as read
+        (excluding messages sent by this user)
+        """
+        Notification.objects.filter(
+            id=notification_id,
+            is_read=False,
+        ).exclude(sender=self.user).update(is_read=True)
+
+        print("notification mark as read", notification_id)

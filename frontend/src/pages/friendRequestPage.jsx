@@ -1,76 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  getCurrentUserAPI,
-  getFriendRequestListAPI,
-  getUserListAPI,
-  postAcceptRequestAPI,
-  postDeclineRequestAPI,
-  postFriendRequestAPI,
-} from "../api/userAPI";
-import { useHelper } from "../hooks/useHelper";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getConversationListAPI, postMessageAPI } from "../api/chatAPI";
-import { useWebSocket } from "../context/WebSocketContext";
+import { useState } from "react";
+import { useNotification } from "../context/NotificationContext";
 
 export default function FriendRequestPage() {
-  const { token } = useHelper();
-  const queryClient = useQueryClient();
-
   const [responded, setResponded] = useState({});
-  const { send, wsStatus, subscribe } = useWebSocket();
 
-  const [friendRequest, setFriendRequest] = useState([]);
-
-  const { data: friendRequestList } = useQuery({
-    queryKey: ["friend-request-list"],
-    queryFn: () => getFriendRequestListAPI(token),
-  });
-
-  useEffect(() => {
-    if (friendRequestList) {
-      setFriendRequest(friendRequestList);
-    }
-  }, [friendRequestList]);
-
-  useEffect(() => {
-    const unsubscribe = subscribe((data) => {
-      if (data.type === "friend_request") {
-        const newRequest = data.friend_request;
-
-        setFriendRequest((prev) => [...prev, newRequest]);
-
-        console.log("New Friend Request", newRequest);
-        queryClient.invalidateQueries(["friend-request-list"]);
-      }
-    });
-
-    return unsubscribe;
-  }, [subscribe, queryClient]);
-
-  const { mutate: postAcceptRequest } = useMutation({
-    mutationFn: (id) => postAcceptRequestAPI(token, id),
-    onSuccess: () => {
-      console.log("success");
-      //   queryClient.invalidateQueries(["friend-request-list"]);
-    },
-    onError: (err) => {
-      console.error(err);
-    },
-  });
-
-  const { mutate: postDeclineRequest } = useMutation({
-    mutationFn: (id) => postDeclineRequestAPI(token, id),
-    onSuccess: () => {
-      console.log("success");
-      //   queryClient.invalidateQueries(["friend-request-list"]);
-    },
-    onError: (err) => {
-      console.error(err);
-    },
-  });
-  console.log(wsStatus);
-
-
+  const { friendRequest, acceptFriendRequest, declineFriendRequest } =
+    useNotification();
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto ">
@@ -91,11 +26,7 @@ export default function FriendRequestPage() {
                       ...prev,
                       [friends.id]: "declined",
                     }));
-                    if (wsStatus !== "open") return;
-                    send({
-                      type: "decline_friend_request",
-                      friend_request_id: friends?.id,
-                    });
+                    declineFriendRequest(friends?.id, friends?.sender?.id);
                   }}
                 >
                   Decline
@@ -107,11 +38,8 @@ export default function FriendRequestPage() {
                       ...prev,
                       [friends.id]: "accepted",
                     }));
-                    if (wsStatus !== "open") return;
-                    send({
-                      type: "accept_friend_request",
-                      friend_request_id: friends?.id,
-                    });
+
+                    acceptFriendRequest(friends?.id, friends?.sender?.id);
                   }}
                 >
                   Accept

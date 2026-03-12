@@ -3,7 +3,12 @@ from accounts.models import CustomUser
 
 # Create your models here.
 class Conversation(models.Model):
+    CONVERSATION_TYPES = (
+        ("private", "Private"),
+        ("group", "Group"),
+    )
     name = models.CharField(max_length=255, blank=True)  # for group chats
+    type = models.CharField(max_length=10, choices=CONVERSATION_TYPES, default="private")
     participants = models.ManyToManyField(CustomUser, related_name='conversations')
     created_at = models.DateTimeField(auto_now_add=True)
 

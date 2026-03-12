@@ -1,137 +1,29 @@
-import { useRef, useState, useEffect } from "react";
-import { getCurrentUserAPI } from "../api/userAPI";
-import { useHelper } from "../hooks/useHelper";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getConversationDataAPI, getConversationListAPI } from "../api/chatAPI";
-import { useWebSocket } from "../context/WebSocketContext";
+import { useRef, useEffect } from "react";
+import { useNotification } from "../context/NotificationContext";
 
 export default function ChatPage() {
-  const { token } = useHelper();
-
-  const typingTimeoutRef = useRef(null);
-  const inputRef = useRef(null);
   const bottomRef = useRef(null);
-  const activeConversationRef = useRef(null);
 
-  const queryClient = useQueryClient();
-
-  const [activeConversation, setActiveConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [isTyping, setIsTyping] = useState(false);
-
-  const { send, wsStatus, subscribe } = useWebSocket();
-
-  const { data: user } = useQuery({
-    queryKey: ["user-data"],
-    queryFn: () => getCurrentUserAPI(token),
-  });
-
-  const { data: conversations } = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () => getConversationListAPI(token),
-  });
-
-  const { data: conversationsData } = useQuery({
-    queryKey: ["conversations-data", activeConversation],
-    queryFn: () => getConversationDataAPI(token, activeConversation),
-    enabled: !!activeConversation,
-  });
-  
-
-  // Keep ref synced
-  useEffect(() => {
-    activeConversationRef.current = activeConversation;
-  }, [activeConversation]);
-
-  // Load existing messages
-  useEffect(() => {
-    if (conversationsData?.messages) {
-      setMessages(conversationsData.messages);
-    }
-  }, [conversationsData]);
-
-  // Mark messages as read
-  useEffect(() => {
-    if (!activeConversation || wsStatus !== "open") return;
-
-    send({
-      type: "mark_read",
-      conversation_id: activeConversation,
-    });
-
-    queryClient.invalidateQueries(["conversations"]);
-  }, [activeConversation, wsStatus, send, queryClient]);
-
-  // WebSocket message listener
-  useEffect(() => {
-    const unsubscribe = subscribe((data) => {
-      if (data.type === "chat_message") {
-        const { message } = data;
-
-        if (message.conversation === activeConversationRef.current) {
-          setMessages((prev) => [...prev, message]);
-        }
-
-        queryClient.setQueryData(["conversations"], (old) => {
-          if (!old) return old;
-
-          return old.map((conv) =>
-            conv.id === message.conversation
-              ? { ...conv, last_message: message }
-              : conv,
-          );
-        });
-      }
-
-      if (data.type === "user_typing") {
-        const incomingId = Number(data.conversation_id);
-        const currentId = Number(activeConversationRef.current);
-
-        if (incomingId === currentId) {
-          setIsTyping(true);
-
-          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-          typingTimeoutRef.current = setTimeout(() => {
-            setIsTyping(false);
-          }, 3000);
-        }
-      }
-    });
-
-    return unsubscribe;
-  }, [subscribe]);
+  const {
+    inputRef,
+    queryClient,
+    activeConversation,
+    setActiveConversation,
+    conversations,
+    messages,
+    isTyping,
+    sendMessage,
+    handleTyping,
+    user,
+    wsStatus,
+  } = useNotification();
 
   // Auto scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = (e) => {
-    e.preventDefault();
-
-    const content = inputRef.current.value.trim();
-    if (!content || wsStatus !== "open") return;
-
-    send({
-      type: "chat_message",
-      conversation_id: activeConversation,
-      content,
-    });
-
-    inputRef.current.value = "";
-    setIsTyping(false);
-  };
-
-  const handleTyping = () => {
-    if (wsStatus !== "open") return;
-
-    send({
-      type: "typing",
-      conversation_id: activeConversation,
-      user_id: user?.id,
-    });
-  };
+  console.log(conversations);
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto">
@@ -143,13 +35,21 @@ export default function ChatPage() {
           return (
             <div
               key={conv.id}
-              onClick={() => setActiveConversation(conv.id)}
+              onClick={() => {
+                setActiveConversation(conv.id);
+                queryClient.invalidateQueries(["conversations"]);
+              }}
               className="p-4 cursor-pointer border-b"
             >
               <div>{otherUser?.username}</div>
 
-              <div className="text-sm text-gray-500 flex justify-between">
-                <span>{conv?.last_message?.content}</span>
+              <div
+                className={`text-sm flex justify-between ${conv?.last_message?.sender?.id === user?.id ? "text-gray-500" : conv?.last_message?.is_read ? "text-gray-500" : "text-black font-bold"}`}
+              >
+                <span>
+                  {conv?.last_message?.content ||
+                    "You are now friends. Start chatting!"}
+                </span>
                 <span>{conv?.last_message?.timestamp}</span>
               </div>
             </div>

@@ -21,6 +21,8 @@ from accounts.views import CurrentUserView, UserListView, SendFriendRequest, Acc
 
 from chats.views import ConversationListCreate, ConversationRetrieveUpdateDestroy, MessageListCreate, ConversationListView, StartConversationView, NewMessageListCreate
 
+from notifications.views import NotificationList, MarkAllReadView
+
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -50,4 +52,7 @@ urlpatterns = [
     path("api/friends/accept/<int:request_id>/", AcceptFriendRequest.as_view()),
     path("api/friends/decline/<int:request_id>/", DeclineFriendRequest.as_view()),
     path("api/friends/request/list/", FriendRequestList.as_view()),
+
+    path("api/notification/list/", NotificationList.as_view()),
+    path('api/mark-all-read/', MarkAllReadView.as_view(), name='mark-all-read'),
 ]

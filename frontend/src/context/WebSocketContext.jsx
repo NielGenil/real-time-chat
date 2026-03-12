@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import { WS_URL } from "../api/api";
 import { useHelper } from "../hooks/useHelper";
@@ -22,7 +28,7 @@ export function WebSocketProvider({ children }) {
         maxRetries: 10,
         minReconnectionDelay: 1000,
         maxReconnectionDelay: 30000,
-      }
+      },
     );
 
     ws.onopen = () => setWsStatus("open");
@@ -32,6 +38,11 @@ export function WebSocketProvider({ children }) {
     // 🔥 central message handler
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
+
+      if (data.type === "ping") {
+        ws.send(JSON.stringify({ type: "pong" }));
+        return;
+      }
 
       listenersRef.current.forEach((listener) => {
         listener(data);
@@ -56,19 +67,15 @@ export function WebSocketProvider({ children }) {
 
     return () => {
       listenersRef.current = listenersRef.current.filter(
-        (listener) => listener !== callback
+        (listener) => listener !== callback,
       );
     };
   };
 
   return (
-    <WebSocketContext.Provider
-      value={{
-        send,
-        subscribe,
-        wsStatus,
-      }}
-    >
+<WebSocketContext.Provider value={{
+      send, subscribe, wsStatus,
+    }}>
       {children}
     </WebSocketContext.Provider>
   );

@@ -9,6 +9,8 @@ import ChatPage from "./pages/chatPage.jsx";
 import ContactPage from "./pages/contactPage.jsx";
 import FriendRequestPage from "./pages/friendRequestPage.jsx";
 import { WebSocketProvider } from "./context/WebSocketContext.jsx";
+import NotificationPage from "./pages/notificationPAge.jsx";
+import { NotificationProvider } from "./context/NotificationContext.jsx";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,10 @@ const router = createBrowserRouter([
         path: "/friend-request",
         element: <FriendRequestPage />,
       },
+      {
+        path: "/notification",
+        element: <NotificationPage />,
+      },
     ],
   },
   { path: "/login", element: <LoginPage /> },
@@ -38,7 +44,9 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <WebSocketProvider>
+        <NotificationProvider>
       <RouterProvider router={router} />
+      </NotificationProvider>
       </WebSocketProvider>
     </QueryClientProvider>
   </StrictMode>,

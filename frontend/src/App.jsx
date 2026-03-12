@@ -12,17 +12,24 @@ import {
   House,
   LogOut,
   Menu,
+  MessagesSquare,
   Settings,
+  UserRoundPlus,
+  Users,
 } from "lucide-react";
+import { useWebSocket } from "./context/WebSocketContext";
+import { useNotification } from "./context/NotificationContext";
 
 function App() {
   const { isAuthenticated, logout, isTokenValid, markTokenInvalid } =
     useHelper();
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(false);
- 
 
-    useEffect(() => {
+  const { unreadCount, friendRequestCount, unreadMesageCount } =
+    useNotification();
+
+  useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1281) {
         setSidebar(false);
@@ -113,54 +120,106 @@ function App() {
           <div className="flex flex-col gap-6 px-2">
             {/* Section 1 */}
             <div className="flex flex-col gap-1">
-              <Link to={"/"}
+              <Link
+                to={"/"}
                 className={`flex items-center gap-6 w-full px-2 h-13 rounded-lg text-sm
   ${sidebar ? "" : "justify-center"}
   text-gray-600 hover:bg-blue-500 hover:text-white transition-colors group`}
               >
-                <House className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+                <div className="relative">
+                  <MessagesSquare className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+                  {!sidebar && unreadMesageCount > 0 && (
+                    <span className="absolute bg-red-500 text-white rounded-full w-[15px] h-[15px] bottom-2.5 left-2.5 flex text-[10px] items-center justify-center">
+                      {unreadMesageCount}
+                    </span>
+                  )}
+                </div>
+
                 {sidebar && (
-                  <span className="whitespace-nowrap font-medium">
-                    Chats
-                  </span>
+                  <div className="relative flex justify-between items-center">
+                    <span className="whitespace-nowrap font-medium">Chats</span>
+
+                    {unreadMesageCount > 0 && (
+                      <span className="absolute bg-red-500 text-white rounded-full w-[15px] h-[15px] bottom-2 left-9 flex text-[10px] items-center justify-center">
+                        {unreadMesageCount}
+                      </span>
+                    )}
+                  </div>
                 )}
               </Link>
-              <Link to={"/contacts"}
+              <Link
+                to={"/contacts"}
                 className={`flex items-center gap-6 w-full px-2 h-13 rounded-lg text-sm
   ${sidebar ? "" : "justify-center"}
   text-gray-600 hover:bg-blue-500 hover:text-white transition-colors group`}
               >
-                <Calendar className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+                <Users className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
                 {sidebar && (
                   <span className="whitespace-nowrap font-medium">
                     Contacts
                   </span>
                 )}
               </Link>
-              <Link to={"/friend-request"}
+              <Link
+                to={"/friend-request"}
                 className={`flex items-center gap-6 w-full px-2 h-13 rounded-lg text-sm
   ${sidebar ? "" : "justify-center"}
   text-gray-600 hover:bg-blue-500 hover:text-white transition-colors group`}
               >
-                <Bell className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+                <div className="relative">
+                  <UserRoundPlus className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+
+                  {!sidebar && friendRequestCount > 0 && (
+                    <span className="absolute bg-red-500 text-white rounded-full w-[15px] h-[15px] bottom-2.5 left-2.5 flex text-[10px] items-center justify-center">
+                      {friendRequestCount}
+                    </span>
+                  )}
+                </div>
+
                 {sidebar && (
-                  <span className="whitespace-nowrap font-medium">
-                    Friend Request
-                  </span>
+                  <div className="relative flex justify-between items-center">
+                    <span className="whitespace-nowrap font-medium">
+                      Friend Request
+                    </span>
+
+                    {friendRequestCount > 0 && (
+                      <span className="absolute bg-red-500 text-white rounded-full w-[15px] h-[15px] bottom-2 left-24 flex text-[10px] items-center justify-center">
+                        {friendRequestCount}
+                      </span>
+                    )}
+                  </div>
                 )}
               </Link>
-              <button
+              <Link
+                to={"/notification"}
                 className={`flex items-center gap-6 w-full px-2 h-13 rounded-lg text-sm
   ${sidebar ? "" : "justify-center"}
   text-gray-600 hover:bg-blue-500 hover:text-white transition-colors group`}
               >
-                <ChartColumnDecreasing className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+                <div className="relative">
+                  <Bell className="shrink-0 text-blue-500 group-hover:text-white transition-colors xl:w-5 xl:h-5 w-4 h-4" />
+
+                  {!sidebar && unreadCount > 0 && (
+                    <span className="absolute bg-red-500 text-white rounded-full w-[15px] h-[15px] bottom-2.5 left-2.5 flex text-[10px] items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
+
                 {sidebar && (
-                  <span className="whitespace-nowrap font-medium">
-                    Analytics
-                  </span>
+                  <div className="relative flex justify-between items-center">
+                    <span className="whitespace-nowrap font-medium">
+                      Notifications
+                    </span>
+
+                    {unreadCount > 0 && (
+                      <span className="absolute bg-red-500 text-white rounded-full w-[15px] h-[15px] bottom-2 left-21 flex text-[10px] items-center justify-center">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
                 )}
-              </button>
+              </Link>
               <button
                 className={`flex items-center gap-6 w-full px-2 h-13 rounded-lg text-sm
   ${sidebar ? "" : "justify-center"}
@@ -193,7 +252,11 @@ function App() {
         </div>
       </aside>
 
-      <section className={`flex-1 overflow-auto text-sm ${sidebar ? "ml-13 xl:ml-0" : "ml-13 xl:ml-0"}`} ><Outlet/> </section>
+      <section
+        className={`flex-1 overflow-auto text-sm ${sidebar ? "ml-13 xl:ml-0" : "ml-13 xl:ml-0"}`}
+      >
+        <Outlet />{" "}
+      </section>
     </main>
   );
 }

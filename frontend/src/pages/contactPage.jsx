@@ -66,6 +66,11 @@ export default function ContactPage() {
       if (data.type === "friend_request") {
         console.log("Friend request received", data.friend_request);
       }
+
+      if (data.type === "error") {
+        alert("Error:", data.message); // "Friend request already exists"
+        // show toast/alert
+      }
     });
 
     return unsubscribe;
@@ -135,18 +140,14 @@ export default function ContactPage() {
             </div>
 
             <div className="w-full flex flex-col gap-5">
-              <form
-                ref={friendRequestRef}
-                onSubmit={submitFriendRequest}
-                className="flex flex-col gap-4"
-              >
+              <form ref={friendRequestRef} className="flex flex-col gap-4">
                 <p className="sm:text-sm text-xs text-gray-600">
                   Note: Select users and assign roles before adding them to the
                   project.
                 </p>
 
-                <input type="hidden" name="sender" value={user.id} />
-                <input type="hidden" name="receiver" value={userId} />
+                <input type="hidden" name="sender" defaultValue={user.id} />
+                <input type="hidden" name="receiver" defaultValue={userId} />
 
                 {userList
                   ?.filter(
