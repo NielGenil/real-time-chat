@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { useWebSocket } from "./context/WebSocketContext";
 import { useNotification } from "./context/NotificationContext";
+import { useFriendRequest } from "./context/FriendRequestContex";
+import { useChat } from "./context/ChatContext";
 
 function App() {
   const { isAuthenticated, logout, isTokenValid, markTokenInvalid } =
@@ -26,8 +28,11 @@ function App() {
   const navigate = useNavigate();
   const [sidebar, setSidebar] = useState(false);
 
-  const { unreadCount, friendRequestCount, unreadMesageCount } =
-    useNotification();
+  const { unreadCount } = useNotification();
+
+  const { friendRequestCount } = useFriendRequest();
+
+  const { unreadMesageCount } = useChat();
 
   useEffect(() => {
     const handleResize = () => {
@@ -84,7 +89,7 @@ function App() {
         />
       )}
       <aside
-        className={`fixed xl:relative flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full z-20 ${sidebar ? "w-[300px]" : "xl:w-[70px] w-[50px]"}`}
+        className={`fixed xl:relative shadow-xl flex flex-col bg-white border-r border-gray-200 transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full z-20 ${sidebar ? "w-[300px]" : "xl:w-[70px] w-[50px]"}`}
       >
         {/* Header */}
         <div className="flex items-center h-14 px-3 border-b border-gray-100 shrink-0">

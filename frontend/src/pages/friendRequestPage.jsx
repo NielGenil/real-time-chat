@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNotification } from "../context/NotificationContext";
+import { useFriendRequest } from "../context/FriendRequestContex";
 
 export default function FriendRequestPage() {
   const [responded, setResponded] = useState({});
 
   const { friendRequest, acceptFriendRequest, declineFriendRequest } =
-    useNotification();
+    useFriendRequest();
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto ">

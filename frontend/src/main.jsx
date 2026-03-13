@@ -11,6 +11,9 @@ import FriendRequestPage from "./pages/friendRequestPage.jsx";
 import { WebSocketProvider } from "./context/WebSocketContext.jsx";
 import NotificationPage from "./pages/notificationPAge.jsx";
 import { NotificationProvider } from "./context/NotificationContext.jsx";
+import { FriendRequestProvider } from "./context/FriendRequestContex.jsx";
+import { ChatProvider } from "./context/ChatContext.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
 
 const queryClient = new QueryClient();
 
@@ -43,11 +46,17 @@ const router = createBrowserRouter([
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <WebSocketProvider>
-        <NotificationProvider>
-      <RouterProvider router={router} />
-      </NotificationProvider>
-      </WebSocketProvider>
+      <AuthProvider>
+        <WebSocketProvider>
+          <ChatProvider>
+            <NotificationProvider>
+              <FriendRequestProvider>
+                <RouterProvider router={router} />
+              </FriendRequestProvider>
+            </NotificationProvider>
+          </ChatProvider>
+        </WebSocketProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

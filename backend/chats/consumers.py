@@ -47,7 +47,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         event_type = data.get('type')
 
-        print("WS RECEIVED:", text_data)
+        # print("WS RECEIVED:", text_data)
        
 
         # ✅ Handle pong reply from client — heartbeat acknowledged
@@ -102,30 +102,55 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         
         if event_type == 'accept_friend_request':
-          
+
             friend_request_id = int(data.get('friend_request_id'))
             receiver_id = data.get("receiver_id")
-           
+
             result = await self.accepted_friend_request(friend_request_id)
 
+            if not result:
+                return
+
+            conversation = result["conversation"]
+            notification = result["notification"]
+
+            # Send notification + conversation to the sender (User A)
             await self.channel_layer.group_send(
                 f"user_{receiver_id}",
                 {
                     "type": "friend_request_response_event",
                     "friend_request_id": friend_request_id,
                     "receiver_id": receiver_id,
-                    "notification": result['notification'],
+                    "notification": notification,
+                    "conversation": conversation,
                 }
             )
+
+            # Send ONLY conversation to the user who accepted (User B)
+            await self.channel_layer.group_send(
+                f"user_{self.user.id}",
+                {
+                    "type": "friend_request_response_event",
+                    "friend_request_id": friend_request_id,
+                    "receiver_id": receiver_id,
+                    "conversation": conversation,
+                }
+            )
+
             return
+
         
         if event_type == 'decline_friend_request':
             try:
                 friend_request_id = int(data.get('friend_request_id'))
                 receiver_id = data.get("receiver_id")
+
             except (TypeError, ValueError):
                 return
             result = await self.declined_friend_request(friend_request_id)
+
+            if not result:
+                return
             await self.channel_layer.group_send(
                 f"user_{receiver_id}",
                 {
@@ -136,7 +161,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-            
             return
         
         if event_type == 'mark_read_notification':
@@ -149,7 +173,47 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             return
 
+        if event_type == "group_chat":
+            selected_participants = data.get("selected_participants")
+            group_name = data.get("group_name")
 
+            result = await self.create_group_chat(selected_participants, group_name)
+
+            if not result:
+                return
+
+            group = result["group_chat_data"]
+            notifications = result["notifications"]
+
+            # ids of invited users
+            participants_ids = [user["id"] for user in selected_participants]
+
+            # include creator for group update
+            all_members = participants_ids + [self.user.id]
+
+            # 1️⃣ Send group update to everyone (including creator)
+            for user_id in all_members:
+                await self.channel_layer.group_send(
+                    f"user_{user_id}",
+                    {
+                        "type": "group_chat_event",
+                        "group": group,
+                    }
+                )
+
+            # 2️⃣ Send notification only to invited users
+            for user_id in participants_ids:
+                await self.channel_layer.group_send(
+                    f"user_{user_id}",
+                    {
+                        "type": "group_chat_event",
+                        "notification": notifications,
+                    }
+                )
+
+            return
+
+        
         # Default: send message
         content = data.get('content', '').strip()
         try:
@@ -196,9 +260,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def friend_request_response_event(self, event):
         await self.send(text_data=json.dumps({
             "type": "friend_request_response",
-            "friend_request_id": event["friend_request_id"],
-            "receiver_id": event["receiver_id"],
-            "notification": event["notification"],
+            "friend_request_id": event.get("friend_request_id"),
+            "receiver_id": event.get("receiver_id"),
+            "notification": event.get("notification"),
+            "conversation": event.get("conversation"),
+        }))
+
+    async def group_chat_event(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "group_chat_event",
+            "group": event.get("group"),
+            "notification": event.get("notification"),
         }))
 
 
@@ -251,19 +323,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def mark_messages_read(self, conversation_id):
-        """
-        ✅ Mark all unread messages in this conversation as read
-        (excluding messages sent by this user)
-        """
-        Message.objects.filter(
-            conversation_id=conversation_id,
-            is_read=False,
-        ).exclude(sender=self.user).update(is_read=True)
+        try:
+            conversation = Conversation.objects.get(
+                id=conversation_id,
+                participants=self.user  # ownership check
+            )
+            Message.objects.filter(
+                conversation=conversation,
+                is_read=False,
+            ).exclude(sender=self.user).update(is_read=True)
+        except Conversation.DoesNotExist:
+            return
 
     @database_sync_to_async
     def get_participant_ids(self, conversation_id):
         try:
-            conversation = Conversation.objects.get(id=conversation_id)
+            conversation = Conversation.objects.get(
+                id=conversation_id,
+                participants=self.user
+            )
             return list(conversation.participants.values_list('id', flat=True))
         except Conversation.DoesNotExist:
             return []
@@ -274,28 +352,43 @@ class ChatConsumer(AsyncWebsocketConsumer):
         from accounts.models import FriendRequest
         from accounts.serializers import FriendRequestSerializer
         from notifications.models import Notification
-        from notifications.serializers import NotificationSerializer # Assuming you have one
+        from notifications.serializers import NotificationSerializer
 
         try:
             receiver = self.user.__class__.objects.get(id=receiver_id)
-            
+
             friend_request, created = FriendRequest.objects.get_or_create(
                 sender=self.user,
                 receiver=receiver,
                 defaults={"status": "pending"}
             )
 
-            if not created and friend_request.status == "declined":
+            notification = None
+
+            if created:
+                # brand new request
+                notification = Notification.objects.create(
+                    sender=self.user,
+                    recipient=receiver,
+                    notification_type="friend_request",
+                    text=f"{self.user.username} sent you a friend request"
+                )
+
+            elif friend_request.status == "declined":
+                # resend request
                 friend_request.status = "pending"
                 friend_request.save()
 
-            # Create the notification and serialize it
-            notification = Notification.objects.create(
-                sender=self.user,
-                recipient=receiver,
-                notification_type="friend_request",
-                text=f"{self.user.username} sent you a friend request"
-            )
+                notification = Notification.objects.create(
+                    sender=self.user,
+                    recipient=receiver,
+                    notification_type="friend_request",
+                    text=f"{self.user.username} sent you a friend request"
+                )
+
+            # If request already exists and is pending → don't create notification
+            if not notification:
+                return None
 
             return {
                 "friend_request": FriendRequestSerializer(friend_request).data,
@@ -306,15 +399,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print("ERROR:", e)
             return None
+
         
     @database_sync_to_async
     def accepted_friend_request(self, friend_request_id):
         from accounts.models import FriendRequest
         from notifications.models import Notification
         from notifications.serializers import NotificationSerializer
+        from chats.serializers import NewConversationSerializer
 
         try:
-            friend_request = FriendRequest.objects.get(id=friend_request_id)
+            friend_request = FriendRequest.objects.get(
+                id=friend_request_id,
+                receiver=self.user  # only the intended recipient can accept
+            )
 
             # ✅ Prevent double accept
             if friend_request.status == "accepted":
@@ -357,6 +455,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             return {
                 "notification": NotificationSerializer(notification).data,
+                "conversation": NewConversationSerializer(conversation).data,
                 "receiver_id": sender.id
             }
 
@@ -374,7 +473,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         try:
             # Get the FriendRequest instance
-            friend_request = FriendRequest.objects.get(id=friend_request_id)
+            friend_request = FriendRequest.objects.get(
+                id=friend_request_id,
+                receiver=self.user  # only the intended recipient can accept
+            )
 
             # Update status
             friend_request.status = "declined"
@@ -404,7 +506,54 @@ class ChatConsumer(AsyncWebsocketConsumer):
         """
         Notification.objects.filter(
             id=notification_id,
+            recipient=self.user,  # ownership check
             is_read=False,
-        ).exclude(sender=self.user).update(is_read=True)
+        ).update(is_read=True)
 
         print("notification mark as read", notification_id)
+
+    @database_sync_to_async
+    def create_group_chat(self, selected_participants, group_name):
+        from chats.serializers import GroupConversationSerializer
+        from accounts.models import CustomUser
+        from notifications.serializers import NotificationSerializer # Assuming you have one
+        try:
+            # create conversation first
+            group_chat = Conversation.objects.create(
+                name=group_name,
+                created_by=self.user,
+                type="group"
+            )
+
+            # get participant IDs
+            participant_ids = [user["id"] for user in selected_participants]
+
+            notifications = []
+
+            for user_id in participant_ids:
+                user = CustomUser.objects.get(id=user_id)
+
+                notification = Notification.objects.create(
+                    sender=self.user,
+                    recipient=user,
+                    notification_type="create_group_chat",
+                    text=f"{self.user.username} added you to group {group_name}"
+                )
+
+                notifications.append(notification)
+
+            # include creator
+            participant_ids.append(self.user.id)
+
+            # set participants
+            users = CustomUser.objects.filter(id__in=participant_ids)
+            group_chat.participants.set(users)
+
+            return {
+                "group_chat_data": GroupConversationSerializer(group_chat).data,
+                "notifications": NotificationSerializer(notification).data,
+        }
+
+        except Exception as e:
+            print("ERROR:", e)
+            return None

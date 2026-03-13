@@ -35,7 +35,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ["id", "participants", "last_message", "created_at"]
+        fields = ["id", "participants", "last_message", "type", "created_at", "name"]
 
     def get_last_message(self, obj):
         message = obj.messages.last()
@@ -55,4 +55,28 @@ class ConversationWithMessageSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ["id", "name", "participants", "created_at", "messages"]
         depth = 1
+
+class NewConversationSerializer(serializers.ModelSerializer):
+    participants = CustomUserConfigureSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Conversation
+        fields = ["id", "participants", "type", "created_at"]
+
+    def get_participants(self, obj):
+        user = self.context["request"].user
+        other_users = obj.participants.exclude(id=user.id)
+        return [{"id": u.id, "username": u.username} for u in other_users]
+    
+class GroupConversationSerializer(serializers.ModelSerializer):
+    from accounts.models import CustomUser
+    participants = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(),
+        many=True
+    )
+
+    class Meta:
+        model = Conversation
+        fields = "__all__"
+
         

@@ -11,7 +11,12 @@ export default function NotificationPage() {
           <h1>Notification</h1>
           <button onClick={markAllRead}>Mark all read</button>
         </section>
-        {notifications?.map((ntf, index) => (
+        {notifications?.slice() // prevents mutating the original array
+          .sort(
+            (a, b) =>
+              new Date(b?.created_at) -
+              new Date(a?.created_at),
+          ).map((ntf, index) => (
           <div
             onClick={() => markOneRead(ntf?.id)}
             className="flex justify-between"
