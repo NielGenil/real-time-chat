@@ -9,18 +9,14 @@ import { useHelper } from "../hooks/useHelper";
 function LoginPage() {
   const loginRef = useRef();
   const navigate = useNavigate();
-  const { isAuthenticated } = useHelper();
+  const { isAuthenticated, login } = useHelper();
 
-  const { mutate: login } = useMutation({
+  const { mutate: loginMutate } = useMutation({
     mutationFn: (loginData) => loginAPI(loginData),
 
     onSuccess: (data) => {
-      // console.log("Success", data);
-      Cookies.set("access", data.access, { secure: false, sameSite: "Lax" });
-      Cookies.set("refresh", data.refresh, {
-        secure: false,
-        sameSite: "Lax",
-      });
+      login(data.access, data.refresh)
+     
       navigate("/");
     },
 
@@ -41,9 +37,8 @@ function LoginPage() {
 
   const loginSubmit = (e) => {
     e.preventDefault();
-
     const loginData = new FormData(loginRef.current);
-    login(loginData);
+    loginMutate(loginData); // 👈 renamed to avoid conflict with login from useHelper
   };
 
   return (

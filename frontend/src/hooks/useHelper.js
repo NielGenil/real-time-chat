@@ -1,102 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import Cookies from "js-cookie";
-import { jwtDecode } from "jwt-decode";
-import axios from "axios";
-import { BASE_URL } from "../api/api";
+// hooks/useHelper.js
+import { useAuth } from "../context/AuthContext";
 
 export function useHelper() {
-  const [token, setToken] = useState(Cookies.get("access"));
-  const [isTokenValid, setIsTokenValid] = useState(true);
-  const refreshTimeoutRef = useRef(null);
-  const isRefreshingRef = useRef(false);
-
-  useEffect(() => {
-    if (refreshTimeoutRef.current) {
-      clearTimeout(refreshTimeoutRef.current);
-      refreshTimeoutRef.current = null;
-    }
-
-    if (!token) {
-      setIsTokenValid(false);
-      return;
-    }
-
-    const refreshAccessToken = async () => {
-      if (isRefreshingRef.current) return;
-      isRefreshingRef.current = true;
-
-      const refreshToken = Cookies.get("refresh");
-      if (!refreshToken) {
-        setIsTokenValid(false);
-        isRefreshingRef.current = false;
-        return false;
-      }
-
-      try {
-        const response = await axios.post(`${BASE_URL}/api/token/refresh/`, {
-          refresh: refreshToken,
-        });
-
-        const newAccessToken = response.data.access;
-        Cookies.set("access", newAccessToken);
-        setToken(newAccessToken);
-        setIsTokenValid(true);
-        return true;
-      } catch (error) {
-        Cookies.remove("access");
-        Cookies.remove("refresh");
-        setToken(null);
-        setIsTokenValid(false);
-        return false;
-      } finally {
-        isRefreshingRef.current = false;
-      }
-    };
-
-    try {
-      const decoded = jwtDecode(token);
-      const expirationTime = decoded.exp * 1000;
-      const currentTime = Date.now();
-      const timeUntilExpiry = expirationTime - currentTime;
-
-      if (timeUntilExpiry <= 0) {
-        Cookies.remove("access");
-        Cookies.remove("refresh");
-        setToken(null);
-        setIsTokenValid(false);
-        return;
-      }
-
-      const refreshTime = timeUntilExpiry - 60000;
-
-      if (refreshTime > 0) {
-        refreshTimeoutRef.current = setTimeout(refreshAccessToken, refreshTime);
-      } else {
-        refreshAccessToken();
-      }
-    } catch {
-      Cookies.remove("access");
-      Cookies.remove("refresh");
-      setToken(null);
-      setIsTokenValid(false);
-    }
-
-    return () => {
-      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
-    };
-  }, [token]);
-
-  const isAuthenticated = !!token;
-
-  const logout = () => {
-    if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
-    Cookies.remove("access");
-    Cookies.remove("refresh");
-    setToken(null);
-    setIsTokenValid(false);
-  };
-
-  const markTokenInvalid = () => setIsTokenValid(false);
+  const { token, isTokenValid, isAuthenticated, login, logout, markTokenInvalid } = useAuth();
 
   const hasPermission = (user, perm) => user?.permissions?.includes(perm);
 
@@ -129,12 +35,13 @@ export function useHelper() {
   };
 
   return {
-    isAuthenticated,
-    logout,
-    isTokenValid,
     token,
-    hasPermission,
+    isTokenValid,
+    isAuthenticated,
+    login,
+    logout,
     markTokenInvalid,
+    hasPermission,
     formatDate,
     formatTimeMilitary,
     formattedDateTime,

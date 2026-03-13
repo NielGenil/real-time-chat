@@ -10,6 +10,7 @@ class Conversation(models.Model):
     name = models.CharField(max_length=255, blank=True)  # for group chats
     type = models.CharField(max_length=10, choices=CONVERSATION_TYPES, default="private")
     participants = models.ManyToManyField(CustomUser, related_name='conversations')
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name="group_creator")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -105,7 +105,9 @@ export default function ContactPage() {
           <button onClick={() => setAddUserModal(true)}>Add user</button>
         </section>
         <div>
-          {userFriends?.map((friends) => (
+          {userFriends?.slice().sort((a, b) => 
+          a.username.localeCompare(b.username)
+          )?.map((friends) => (
             <div
               onClick={() => {
                 setUserId(friends.id);
@@ -142,8 +144,7 @@ export default function ContactPage() {
             <div className="w-full flex flex-col gap-5">
               <form ref={friendRequestRef} className="flex flex-col gap-4">
                 <p className="sm:text-sm text-xs text-gray-600">
-                  Note: Select users and assign roles before adding them to the
-                  project.
+                  Note: Send user friend request.
                 </p>
 
                 <input type="hidden" name="sender" defaultValue={user.id} />
