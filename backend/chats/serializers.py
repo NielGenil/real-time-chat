@@ -1,4 +1,4 @@
-from rest_framework import serializers
+from rest_framework import serializers, request
 from .models import Conversation, Message
 from accounts.serializers import CustomUserConfigureSerializer
 
@@ -44,9 +44,20 @@ class ConversationSerializer(serializers.ModelSerializer):
         return None
 
     def get_participants(self, obj):
-        user = self.context["request"].user
+        request = self.context.get("request")
+        user = request.user
+
         other_users = obj.participants.exclude(id=user.id)
-        return [{"id": u.id, "username": u.username} for u in other_users]
+
+        participants = []
+        for u in other_users:
+            participants.append({
+                "id": u.id,
+                "username": u.username,
+                "profile_picture": request.build_absolute_uri(u.profile_picture.url) if u.profile_picture else None
+            })
+
+        return participants
     
 class ConversationWithMessageSerializer(serializers.ModelSerializer):
     messages = MessageOnConversationSerializer(many=True, read_only=True)

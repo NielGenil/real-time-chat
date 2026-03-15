@@ -1,5 +1,11 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+
+def user_profile_path(instance, filename):
+    ext = filename.split('.')[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    return f"profile_pictures/{filename}"
 
 class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
@@ -11,6 +17,12 @@ class CustomUser(AbstractUser):
     is_online = models.BooleanField(default=False)
 
     friends = models.ManyToManyField('self',blank=True)
+
+    profile_picture = models.ImageField(
+        upload_to=user_profile_path,
+        blank=True,
+        null=True
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

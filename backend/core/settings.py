@@ -52,7 +52,7 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG") == "True"
 
-DEV_MODE = False
+DEV_MODE = True
 
 # Application definition
 
@@ -186,6 +186,11 @@ TIME_ZONE = 'Asia/Manila'
 USE_I18N = True
 
 USE_TZ = True
+
+import os
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 
 # Static files (CSS, JavaScript, Images)

@@ -7,6 +7,7 @@ class CustomUserAdmin(UserAdmin):
 
     fieldsets = UserAdmin.fieldsets + (
         ("Social", {"fields": ("friends",)}),
+        ("Profile", {"fields": ("profile_picture",)}),
     )
 
     filter_horizontal = ("groups", "user_permissions", "friends")
