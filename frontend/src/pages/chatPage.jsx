@@ -1,12 +1,16 @@
 import { useRef, useEffect, useState } from "react";
 import { useNotification } from "../context/NotificationContext";
 import { useChat } from "../context/ChatContext";
+import { useHelper } from "../hooks/useHelper";
+import { User } from "lucide-react";
 
 export default function ChatPage() {
+  const { formattedDateTimeTimeOnly } = useHelper();
   const bottomRef = useRef(null);
   const groupNameRef = useRef(null);
   const [addGroupChatModal, setAddGroupChatModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [search, setSearch] = useState("");
 
   const {
     inputRef,
@@ -61,10 +65,13 @@ export default function ChatPage() {
 
   const isValidGroup = groupName.trim() !== "" && selectedUsers.length > 1;
 
+  console.log(conversationList);
+
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto">
       {/* Conversation list */}
       <section className="flex flex-col w-[500px] p-2 xl:p-4 bg-slate-50/50 xl:border-r border-gray-300 gap-4">
+        {/* <img src={user.profile_picture} /> */}
         <div className="flex justify-between">
           <h1 className="font-semibold text-md xl:text-lg">Chats</h1>
           <button onClick={() => setAddGroupChatModal(true)}>
@@ -72,32 +79,75 @@ export default function ChatPage() {
           </button>
         </div>
         <div>
+          <input
+            type="text"
+            className="bg-gray-100 w-full p-2 pl-4 rounded-full"
+            placeholder="Search previous conversation"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
           <h1 className="font-semibold text-md xl:text-lg">Online Friends</h1>
-          <div className="flex gap-2 ">
-            {user?.friends
-              ?.filter((friend) => friend.is_online)
-              .map((friend) => (
-                <div
-                  className="h-15 w-15 rounded-full bg-blue-500 flex items-center justify-center"
-                  key={friend.id}
-                >
-                  {friend.username}
-                </div>
-              ))}
+          <div className="flex gap-4 h-20 items-center">
+            {user?.friends?.filter((friend) => friend.is_online).length > 0 ? (
+              user?.friends
+                ?.filter((friend) => friend.is_online)
+                .map((friend) => (
+                  <div
+                    key={friend.id}
+                    className="h-15 w-15 flex flex-col items-center justify-center"
+                  >
+                    <div>
+                      {friend?.profile_picture ? (
+                        <img
+                          className="h-15 w-15 rounded-full"
+                          src={friend?.profile_picture}
+                        />
+                      ) : (
+                        <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
+                      )}
+                    </div>
+                    <span className="w-15 text-nowrap justify-center items-center flex">
+                      {friend.username}
+                    </span>
+                  </div>
+                ))
+            ) : (
+              <div className="flex items-center w-full justify-center">
+                No friend online
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-2">
           {conversationList
             ?.slice() // prevents mutating the original array
-            .sort(
-              (a, b) =>
-                new Date(b?.last_message?.timestamp || 0) -
-                new Date(a?.last_message?.timestamp || 0),
-            )
+            .sort((a, b) => {
+              const aTime = a?.last_message?.timestamp
+                ? new Date(a.last_message.timestamp)
+                : new Date(a.created_at);
+              const bTime = b?.last_message?.timestamp
+                ? new Date(b.last_message.timestamp)
+                : new Date(b.created_at);
+
+              return bTime - aTime; // newest first
+            })
+            .filter((conv) => {
+              const otherUser = conv?.participants.find(
+                (participant) => participant?.id !== user?.id,
+              );
+
+              const name =
+                conv?.type === "private" ? otherUser?.username : conv?.name;
+
+              return name?.toLowerCase().includes(search.toLowerCase());
+            })
             .map((conv) => {
               const otherUser = conv?.participants.find(
                 (participant) => participant?.id !== user?.id,
               );
+              console.log("test", conv);
 
               return (
                 <div
@@ -106,36 +156,58 @@ export default function ChatPage() {
                     setActiveConversation(conv?.id);
                     queryClient.invalidateQueries(["conversations"]);
                   }}
-                  className="p-4 cursor-pointer bg-white rounded-md shadow-sm"
+                  className="p-4 flex gap-2 cursor-pointer bg-white rounded-md shadow-sm"
                 >
-                  {conv?.type === "private" ? (
-                    <div>{otherUser?.username}</div>
-                  ) : (
-                    <div>{conv?.name}</div>
-                  )}
-
-                  <div
-                    className={`text-sm flex justify-between ${
-                      conv?.last_message?.sender?.id === user?.id
-                        ? "text-gray-500"
-                        : conv?.last_message?.is_read
-                          ? "text-gray-500"
-                          : "text-black font-bold"
-                    }`}
-                  >
-                    {conv?.type === "private" ? (
-                      <span>
-                        {conv?.last_message?.content ||
-                          "You are now friends. Start chatting!"}
-                      </span>
+                  <div className="h-15 w-20">
+                    {conv?.type === "private" && otherUser?.profile_picture ? (
+                      <img
+                        className="h-15 w-15 rounded-full"
+                        src={otherUser?.profile_picture}
+                      />
                     ) : (
-                      <span>
-                        {conv?.last_message?.content ||
-                          "Say hi to your friends. Start chatting!"}
-                      </span>
+                      <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
                     )}
+                  </div>
+                  <div className="flex justify-between w-full">
+                    <div className="justify-center flex flex-col">
+                      <div>
+                        {conv?.type === "private" ? (
+                          <div>{otherUser?.username}</div>
+                        ) : (
+                          <div>{conv?.name}</div>
+                        )}
+                      </div>
 
-                    <span>{conv?.last_message?.timestamp}</span>
+                      <div
+                        className={`text-sm flex justify-between max-w-70 min-w-0 truncate ${
+                          conv?.last_message?.sender?.id === user?.id
+                            ? "text-gray-500"
+                            : conv?.last_message?.is_read
+                              ? "text-gray-500"
+                              : "text-black font-bold"
+                        }`}
+                      >
+                        {conv?.type === "private" ? (
+                          <span className="truncate">
+                            {conv?.last_message?.content ||
+                              "You are now friends. Start chatting!"}
+                          </span>
+                        ) : (
+                          <span className="truncate">
+                            {conv?.last_message?.content ||
+                              "Say hi to your friends. Start chatting!"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col-reverse">
+                      <span>
+                        {formattedDateTimeTimeOnly(
+                          conv?.last_message?.timestamp,
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -165,8 +237,8 @@ export default function ChatPage() {
                       : "justify-start"
                   }`}
                 >
-                  <div className="bg-gray-100 rounded p-2 max-w-xs">
-                    <p>{msg.content}</p>
+                  <div className="bg-gray-100 rounded p-2 max-w-xs wrap-break-word">
+                    <p className="">{msg.content}</p>
                     <p className="text-xs text-gray-400">
                       {msg.sender?.username}
                     </p>

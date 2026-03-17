@@ -22,7 +22,7 @@ export function useHelper() {
     const date = new Date(`1970-01-01T${timeString}`);
     return date
       .toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
-      .replace(":", "");
+      .replace(":", ":");
   };
 
   const formattedDateTime = (dateString) => {
@@ -30,6 +30,15 @@ export function useHelper() {
     const date = new Date(dateString);
     if (isNaN(date)) return dateString;
     return `${formatDate(dateString)} at ${formatTimeMilitary(
+      date.toTimeString().slice(0, 5)
+    )}`;
+  };
+
+    const formattedDateTimeTimeOnly = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date)) return dateString;
+    return `${formatTimeMilitary(
       date.toTimeString().slice(0, 5)
     )}`;
   };
@@ -45,5 +54,6 @@ export function useHelper() {
     formatDate,
     formatTimeMilitary,
     formattedDateTime,
+    formattedDateTimeTimeOnly,
   };
 }
