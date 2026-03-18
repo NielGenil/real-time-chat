@@ -11,6 +11,7 @@ export default function ChatPage() {
   const [addGroupChatModal, setAddGroupChatModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [userData, setUserData] = useState({});
 
   const {
     inputRef,
@@ -65,7 +66,7 @@ export default function ChatPage() {
 
   const isValidGroup = groupName.trim() !== "" && selectedUsers.length > 1;
 
-  console.log(conversationList);
+  console.log(userData);
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto">
@@ -89,7 +90,7 @@ export default function ChatPage() {
         </div>
         <div className="flex flex-col gap-2">
           <h1 className="font-semibold text-md xl:text-lg">Online Friends</h1>
-          <div className="flex gap-4 h-20 items-center">
+          <div className="flex gap-8 h-20 items-center">
             {user?.friends?.filter((friend) => friend.is_online).length > 0 ? (
               user?.friends
                 ?.filter((friend) => friend.is_online)
@@ -101,14 +102,14 @@ export default function ChatPage() {
                     <div>
                       {friend?.profile_picture ? (
                         <img
-                          className="h-15 w-15 rounded-full"
+                          className="h-15 w-15 rounded-full object-cover"
                           src={friend?.profile_picture}
                         />
                       ) : (
                         <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
                       )}
                     </div>
-                    <span className="w-15 text-nowrap justify-center items-center flex">
+                    <span className="w-15 text-nowrap justify-center items-center flex font-semibold">
                       {friend.username}
                     </span>
                   </div>
@@ -147,7 +148,6 @@ export default function ChatPage() {
               const otherUser = conv?.participants.find(
                 (participant) => participant?.id !== user?.id,
               );
-              console.log("test", conv);
 
               return (
                 <div
@@ -155,13 +155,14 @@ export default function ChatPage() {
                   onClick={() => {
                     setActiveConversation(conv?.id);
                     queryClient.invalidateQueries(["conversations"]);
+                    setUserData(conv);
                   }}
                   className="p-4 flex gap-2 cursor-pointer bg-white rounded-md shadow-sm"
                 >
                   <div className="h-15 w-20">
                     {conv?.type === "private" && otherUser?.profile_picture ? (
                       <img
-                        className="h-15 w-15 rounded-full"
+                        className="h-15 w-15 rounded-full object-cover"
                         src={otherUser?.profile_picture}
                       />
                     ) : (
@@ -170,7 +171,7 @@ export default function ChatPage() {
                   </div>
                   <div className="flex justify-between w-full">
                     <div className="justify-center flex flex-col">
-                      <div>
+                      <div className="font-semibold">
                         {conv?.type === "private" ? (
                           <div>{otherUser?.username}</div>
                         ) : (
@@ -227,6 +228,26 @@ export default function ChatPage() {
 
         {activeConversation ? (
           <>
+            <div className="border-b border-gray-300 shadow-sm w-full p-2 pl-4">
+              {userData.type === "private" ? (
+                <>
+                  {userData?.participants.map((userdata) => (
+                    <div className="flex gap-2 items-center">
+                      <img
+                        className="h-10 w-10 rounded-full object-cover"
+                        src={userdata?.profile_picture}
+                      />
+                      <span>{userdata.username}</span>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="flex gap-2 items-center">
+                  <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                  <span>{userData?.name}</span>
+                </div>
+              )}
+            </div>
             <div className="flex-1 h-96 content-end overflow-y-auto p-4 space-y-2">
               {messages.map((msg) => (
                 <div
