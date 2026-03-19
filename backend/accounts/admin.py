@@ -8,11 +8,12 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ("Social", {"fields": ("friends",)}),
         ("Profile", {"fields": ("profile_picture",)}),
+        ("Status", {"fields": ("is_online",)}),
     )
 
     filter_horizontal = ("groups", "user_permissions", "friends")
     
-    list_display = ('first_name', 'last_name', 'email')
+    list_display = ('first_name', 'last_name', 'email', 'is_online')
 
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(FriendRequest)

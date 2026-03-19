@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { useNotification } from "../context/NotificationContext";
 import { useChat } from "../context/ChatContext";
 import { useHelper } from "../hooks/useHelper";
-import { User } from "lucide-react";
+import { Plus, Search, User, Users } from "lucide-react";
 
 export default function ChatPage() {
   const { formattedDateTimeTimeOnly } = useHelper();
@@ -66,47 +66,56 @@ export default function ChatPage() {
 
   const isValidGroup = groupName.trim() !== "" && selectedUsers.length > 1;
 
-  console.log(userData);
-
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto">
       {/* Conversation list */}
-      <section className="flex flex-col w-[500px] p-2 xl:p-4 bg-slate-50/50 xl:border-r border-gray-300 gap-4">
+      <section className="flex flex-col w-[500px] p-2 xl:p-4 bg-gray-50/50 xl:border-r border-gray-300 gap-4">
         {/* <img src={user.profile_picture} /> */}
         <div className="flex justify-between">
           <h1 className="font-semibold text-md xl:text-lg">Chats</h1>
           <button onClick={() => setAddGroupChatModal(true)}>
-            Add Group Chat
+            <Plus className="text-white bg-blue-500 rounded-full w-6 h-6 p-0.5" />
           </button>
         </div>
         <div>
-          <input
-            type="text"
-            className="bg-gray-100 w-full p-2 pl-4 rounded-full"
-            placeholder="Search previous conversation"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <div className="relative">
+            <input
+              type="text"
+              className="bg-white shadow-xs  w-full p-2 pl-4 rounded-md h-12"
+              placeholder="Search previous conversation"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer text-gray-500 hover:text-gray-700 text-violet-950">
+              <Search className="h-4 w-4 text-gray-500" />
+            </span>
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <h1 className="font-semibold text-md xl:text-lg">Online Friends</h1>
-          <div className="flex gap-8 h-20 items-center">
+          <div className="flex gap-2 h-20 items-center">
             {user?.friends?.filter((friend) => friend.is_online).length > 0 ? (
               user?.friends
                 ?.filter((friend) => friend.is_online)
                 .map((friend) => (
                   <div
                     key={friend.id}
-                    className="h-15 w-15 flex flex-col items-center justify-center"
+                    className="h-15 w-25 flex flex-col items-center justify-center"
                   >
                     <div>
                       {friend?.profile_picture ? (
-                        <img
-                          className="h-15 w-15 rounded-full object-cover"
-                          src={friend?.profile_picture}
-                        />
+                        <div className="relative">
+                          <img
+                            className="h-15 w-15 rounded-full object-cover"
+                            src={friend?.profile_picture}
+                          />
+                          <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-2 top-12"></div>
+                        </div>
                       ) : (
-                        <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
+                        <div className="relative">
+                          <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
+                          <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-2 top-12"></div>
+                        </div>
                       )}
                     </div>
                     <span className="w-15 text-nowrap justify-center items-center flex font-semibold">
@@ -149,6 +158,8 @@ export default function ChatPage() {
                 (participant) => participant?.id !== user?.id,
               );
 
+              console.log(otherUser);
+
               return (
                 <div
                   key={conv?.id}
@@ -160,13 +171,27 @@ export default function ChatPage() {
                   className="p-4 flex gap-2 cursor-pointer bg-white rounded-md shadow-sm"
                 >
                   <div className="h-15 w-20">
-                    {conv?.type === "private" && otherUser?.profile_picture ? (
-                      <img
-                        className="h-15 w-15 rounded-full object-cover"
-                        src={otherUser?.profile_picture}
-                      />
+                    {conv?.type === "private" ? (
+                      <>
+                        {otherUser?.profile_picture ? (
+                          <div className="relative">
+                            <img
+                              className="h-15 w-15 rounded-full object-cover"
+                              src={otherUser?.profile_picture}
+                            />
+                            <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-3 top-11.5"></div>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
+                            <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-3 top-11.5"></div>
+                          </div>
+                        )}
+                      </>
                     ) : (
-                      <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
+                      <div className="relative">
+                        <Users className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
+                      </div>
                     )}
                   </div>
                   <div className="flex justify-between w-full">

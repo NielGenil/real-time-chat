@@ -54,6 +54,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             participants.append({
                 "id": u.id,
                 "username": u.username,
+                "is_online": u.is_online,
                 "profile_picture": request.build_absolute_uri(u.profile_picture.url) if u.profile_picture else None
             })
 
