@@ -2,7 +2,17 @@ import { useRef, useEffect, useState } from "react";
 import { useNotification } from "../context/NotificationContext";
 import { useChat } from "../context/ChatContext";
 import { useHelper } from "../hooks/useHelper";
-import { Plus, Search, User, Users } from "lucide-react";
+import {
+  EllipsisVertical,
+  Mic,
+  Paperclip,
+  Phone,
+  Plus,
+  Search,
+  User,
+  Users,
+  Video,
+} from "lucide-react";
 
 export default function ChatPage() {
   const { formattedDateTimeTimeOnly } = useHelper();
@@ -81,7 +91,7 @@ export default function ChatPage() {
           <div className="relative">
             <input
               type="text"
-              className="bg-white shadow-xs  w-full p-2 pl-4 rounded-md h-12"
+              className="bg-white shadow-xs  w-full p-2 pl-4 rounded-md h-12 focus:outline-none"
               placeholder="Search previous conversation"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -131,6 +141,8 @@ export default function ChatPage() {
           </div>
         </div>
         <div className="flex flex-col gap-2">
+          <h1 className="font-semibold text-md xl:text-lg">All Chats</h1>
+
           {conversationList
             ?.slice() // prevents mutating the original array
             .sort((a, b) => {
@@ -158,7 +170,7 @@ export default function ChatPage() {
                 (participant) => participant?.id !== user?.id,
               );
 
-              console.log(otherUser);
+              console.log(userData);
 
               return (
                 <div
@@ -179,12 +191,16 @@ export default function ChatPage() {
                               className="h-15 w-15 rounded-full object-cover"
                               src={otherUser?.profile_picture}
                             />
-                            <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-3 top-11.5"></div>
+                            {otherUser?.is_online && (
+                              <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-3 top-11.5"></div>
+                            )}
                           </div>
                         ) : (
                           <div className="relative">
                             <User className="h-15 w-15 bg-gray-200 text-gray-500 rounded-full p-3" />
-                            <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-3 top-11.5"></div>
+                            {otherUser?.is_online && (
+                              <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-3 top-11.5"></div>
+                            )}
                           </div>
                         )}
                       </>
@@ -253,16 +269,39 @@ export default function ChatPage() {
 
         {activeConversation ? (
           <>
-            <div className="border-b border-gray-300 shadow-sm w-full p-2 pl-4">
+            <div className="border-b border-gray-300 shadow-sm w-full p-2 pl-4 flex justify-between items-center">
               {userData.type === "private" ? (
                 <>
                   {userData?.participants.map((userdata) => (
                     <div className="flex gap-2 items-center">
-                      <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src={userdata?.profile_picture}
-                      />
-                      <span>{userdata.username}</span>
+                      <div className="relative">
+                        
+
+                         <>
+                          {userdata?.profile_picture ? (
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={userdata?.profile_picture}
+                            />
+                          ) : (
+                            <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                          )}
+                        </>
+                        {userdata?.is_online && (
+                          <div className="bg-green-500 border-3 border-white h-3.5 w-3.5 rounded-full absolute right-1 top-8"></div>
+                        )}
+                      </div>
+
+                      <div>
+                        <span className="font-semibold">
+                          {userdata.username}
+                        </span>
+                        {userdata?.is_online ? (
+                          <p className="text-gray-400">Online</p>
+                        ) : (
+                          <p className="text-gray-400">Offline</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </>
@@ -272,8 +311,14 @@ export default function ChatPage() {
                   <span>{userData?.name}</span>
                 </div>
               )}
+
+              <div className="flex gap-6 items-center">
+                <Video className="h-5 w-5 text-blue-500" />
+                <Phone className="h-4.5 w-4.5 text-blue-500" />
+                <EllipsisVertical className="h-5 w-5 text-blue-500" />
+              </div>
             </div>
-            <div className="flex-1 h-96 content-end overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 h-96 content-end overflow-y-auto p-4 space-y-2 bg-[url('/images/bg-01.png')] bg-cover">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -283,11 +328,47 @@ export default function ChatPage() {
                       : "justify-start"
                   }`}
                 >
-                  <div className="bg-gray-100 rounded p-2 max-w-xs wrap-break-word">
-                    <p className="">{msg.content}</p>
-                    <p className="text-xs text-gray-400">
-                      {msg.sender?.username}
-                    </p>
+                  <div className="flex gap-2">
+                    <div className="content-end">
+                      {msg.sender.id !== user.id && (
+                        <>
+                          {msg.sender?.profile_picture ? (
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={msg.sender?.profile_picture}
+                            />
+                          ) : (
+                            <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div>
+                      <p
+                        className={`text-xs text-gray-400 flex gap-2 items-center mb-1 ${
+                          msg.sender?.id === user?.id
+                            ? "flex-row-reverse"
+                            : "justify-start"
+                        }`}
+                      >
+                        <span className="font-semibold">
+                          {msg.sender?.id === user?.id ? (
+                            <p>You</p>
+                          ) : (
+                            <>{msg.sender?.username}</>
+                          )}
+                        </span>{" "}
+                        <div className="h-1 w-1 bg-gray-300 rounded-full" />{" "}
+                        <span>{formattedDateTimeTimeOnly(msg.timestamp)}</span>
+                      </p>
+
+                      <div
+                        className={`rounded p-2 max-w-xs wrap-break-word ${msg.sender?.id === user?.id ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+                      >
+                        <p className="">{msg.content}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -303,13 +384,19 @@ export default function ChatPage() {
               <div ref={bottomRef} />
             </div>
 
-            <form onSubmit={sendMessage} className="flex p-4 border-t gap-2">
+            <form
+              onSubmit={sendMessage}
+              className="flex p-4 border-t border-gray-300 gap-2 items-center"
+            >
+              <Plus className="h-5 w-5 rounded-full bg-blue-500 text-white" />
+              <Mic className="h-5 w-5 text-blue-500" />
+              <Paperclip className="h-5 w-5 text-blue-500" />
               <input
                 ref={inputRef}
                 onChange={handleTyping}
                 type="text"
                 placeholder="Type a message..."
-                className="flex-1 border rounded px-3 py-2"
+                className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none"
               />
 
               <button
