@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { useNotification } from "../context/NotificationContext";
 import { useChat } from "../context/ChatContext";
 import { useHelper } from "../hooks/useHelper";
@@ -12,6 +12,7 @@ import {
   User,
   Users,
   Video,
+  X,
 } from "lucide-react";
 
 export default function ChatPage() {
@@ -21,6 +22,7 @@ export default function ChatPage() {
   const [addGroupChatModal, setAddGroupChatModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [searchTwo, setSearchTwo] = useState("");
   const [userData, setUserData] = useState({});
 
   const {
@@ -59,6 +61,40 @@ export default function ChatPage() {
     (friend) => !selectedUsers.some((u) => u.id === friend.id),
   );
 
+  //   const filteredPositions = useMemo(() => {
+  //     if (!availableFriends) return [];
+
+  //     return availableFriends.filter((friend) => {
+  //       const searchableText = [friend.username]
+  //         .filter(Boolean)
+  //         .join(" ")
+  //         .toLowerCase();
+
+  //       return searchableText.includes(search.toLowerCase());
+  //     });
+  //   }, [availableFriends, searchTwo]);
+
+  //   const { data: memberList } = useQuery({
+  //   queryKey: ["project-member"],
+  //   queryFn: () => getProjectMembersAPI(token, projectId),
+  // });
+
+  const filteredPositions = useMemo(() => {
+    const memberListData = Array.isArray(availableFriends)
+      ? availableFriends
+      : [];
+    if (!memberListData) return [];
+
+    return memberListData.filter((user) => {
+      const searchableText = [user.username]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(searchTwo.toLowerCase());
+    });
+  }, [availableFriends, searchTwo]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const groupName = groupNameRef.current.value.trim();
@@ -76,10 +112,12 @@ export default function ChatPage() {
 
   const isValidGroup = groupName.trim() !== "" && selectedUsers.length > 1;
 
+  console.log(availableFriends);
+
   return (
-    <main className="flex h-full w-full overflow-hidden overflow-y-auto">
+    <main className="flex h-full w-full overflow-hidden">
       {/* Conversation list */}
-      <section className="flex flex-col w-[500px] p-2 xl:p-4 bg-gray-50/50 xl:border-r border-gray-300 gap-4">
+      <section className="flex flex-col w-[500px] p-2 xl:p-4 bg-gray-50/50 xl:border-r border-gray-300 gap-4 overflow-y-auto">
         {/* <img src={user.profile_picture} /> */}
         <div className="flex justify-between">
           <h1 className="font-semibold text-md xl:text-lg">Chats</h1>
@@ -170,7 +208,7 @@ export default function ChatPage() {
                 (participant) => participant?.id !== user?.id,
               );
 
-              console.log(userData);
+              // console.log(userData);
 
               return (
                 <div
@@ -275,9 +313,7 @@ export default function ChatPage() {
                   {userData?.participants.map((userdata) => (
                     <div className="flex gap-2 items-center">
                       <div className="relative">
-                        
-
-                         <>
+                        <>
                           {userdata?.profile_picture ? (
                             <img
                               className="h-10 w-10 rounded-full object-cover"
@@ -431,14 +467,15 @@ export default function ChatPage() {
                   Note: Select users and create group.
                 </p>
 
-                <div>
-                  <h1>Group Chat name</h1>
+                <div className="flex flex-col gap-2">
+                  <h1 className="font-semibold">Group Chat name</h1>
                   <input
                     ref={groupNameRef}
                     type="text"
                     name="name"
+                    placeholder="Enter group name"
                     required
-                    className="border p-2 w-full rounded"
+                    className="border border-gray-300 p-2 w-full rounded"
                   />
                 </div>
 
@@ -446,39 +483,96 @@ export default function ChatPage() {
                 <input type="hidden" name="type" value="group" />
 
                 {/* Selected Members */}
-                {selectedUsers.length > 0 && (
-                  <div className="border p-2 rounded-md">
-                    <p className="text-sm font-semibold mb-2">
-                      Selected Members ({selectedUsers.length + 1})
-                    </p>
 
-                    <div className="flex justify-between">
-                      <span>{user.username} (Creator)</span>
+                <div>
+                  <p className="text-sm font-semibold mb-2">
+                    Selected Members ({selectedUsers.length + 1})
+                  </p>
+
+                  <div className="flex gap-8">
+                    <div className="flex flex-col gap-1 items-center">
+                      {user?.profile_picture ? (
+                        <div className="relative">
+                          <img
+                            className="h-10 w-10 rounded-full object-cover"
+                            src={user?.profile_picture}
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                        </div>
+                      )}
+                      (You)
                     </div>
 
                     {selectedUsers.map((u) => (
-                      <div key={u.id} className="flex justify-between">
-                        <span>{u.username}</span>
+                      <div key={u.id} className="flex gap-8">
+                        <div className="flex flex-col gap-1 items-center">
+                          {u?.profile_picture ? (
+                            <div className="relative">
+                              <img
+                                className="h-10 w-10 rounded-full object-cover"
+                                src={u?.profile_picture}
+                              />
 
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveUser(u.id)}
-                          className="text-red-500"
-                        >
-                          Remove
-                        </button>
+                              <X
+                                onClick={() => handleRemoveUser(u.id)}
+                                className="text-white rounded-full h-4 w-4 absolute left-6.5 bottom-7 bg-red-500"
+                              />
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                              <X
+                                onClick={() => handleRemoveUser(u.id)}
+                                className="text-white rounded-full h-4 w-4 absolute left-6.5 bottom-7 bg-red-500"
+                              />
+                            </div>
+                          )}
+
+                          <p>{u.username}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Search Friend"
+                  value={searchTwo}
+                  onChange={(e) => setSearchTwo(e.target.value)}
+                  className="
+    mb-3 px-3 py-2 text-sm
+    border border-gray-300 rounded-md
+    focus:outline-none focus:ring-2 focus:ring-blue-500
+  "
+                />
 
                 {/* Friend List */}
-                {availableFriends?.map((friend) => (
+                {filteredPositions?.map((friend) => (
                   <div key={friend.id} className="flex justify-between">
-                    <p>{friend.username}</p>
+                    <div className="flex gap-2 items-center">
+                      {friend?.profile_picture ? (
+                        <div className="relative">
+                          <img
+                            className="h-10 w-10 rounded-full object-cover"
+                            src={friend?.profile_picture}
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                        </div>
+                      )}
+
+                      <p>{friend.username}</p>
+                    </div>
 
                     <button
                       type="button"
+                      className="bg-blue-500 p-1.5 rounded-md text-white"
                       onClick={() => handleSelectUser(friend)}
                     >
                       Select

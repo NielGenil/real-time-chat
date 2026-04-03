@@ -52,7 +52,7 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG") == "True"
 
-DEV_MODE = False
+DEV_MODE = True
 
 # Application definition
 
