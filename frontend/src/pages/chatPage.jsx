@@ -108,6 +108,11 @@ export default function ChatPage() {
     setSelectedUsers([]);
   };
 
+  const handleClear = () => {
+    inputRef.current.value = ""; // clears the input
+    console.log("TEST");
+  };
+
   const groupName = groupNameRef.current?.value || "";
 
   const isValidGroup = groupName.trim() !== "" && selectedUsers.length > 1;
@@ -122,7 +127,7 @@ export default function ChatPage() {
         <div className="flex justify-between">
           <h1 className="font-semibold text-md xl:text-lg">Chats</h1>
           <button onClick={() => setAddGroupChatModal(true)}>
-            <Plus className="text-white bg-blue-500 rounded-full w-6 h-6 p-0.5" />
+            <Plus className="text-white bg-blue-500 rounded-full xl:w-6 xl:h-6 w-5 h-5 p-0.5" />
           </button>
         </div>
         <div>
@@ -217,6 +222,7 @@ export default function ChatPage() {
                     setActiveConversation(conv?.id);
                     queryClient.invalidateQueries(["conversations"]);
                     setUserData(conv);
+                    inputRef.current.value = "";
                   }}
                   className="p-4 flex gap-2 cursor-pointer bg-white rounded-md shadow-sm"
                 >
@@ -503,7 +509,7 @@ export default function ChatPage() {
                           <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
                         </div>
                       )}
-                      (You)
+                      <span className="font-semibold">(You)</span>
                     </div>
 
                     {selectedUsers.map((u) => (
@@ -531,7 +537,7 @@ export default function ChatPage() {
                             </div>
                           )}
 
-                          <p>{u.username}</p>
+                          <p className="font-semibold">{u.username}</p>
                         </div>
                       </div>
                     ))}
@@ -567,7 +573,7 @@ export default function ChatPage() {
                         </div>
                       )}
 
-                      <p>{friend.username}</p>
+                      <p className="font-semibold">{friend.username}</p>
                     </div>
 
                     <button
@@ -599,7 +605,11 @@ export default function ChatPage() {
                 <button
                   type="button"
                   className="py-2 px-4 border border-gray-300 rounded-md"
-                  onClick={() => setAddGroupChatModal(false)}
+                  onClick={() => {
+                    setAddGroupChatModal(false);
+                    setSearchTwo("");
+                    setSelectedUsers([]);
+                  }}
                 >
                   Close
                 </button>
