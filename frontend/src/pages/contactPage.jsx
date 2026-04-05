@@ -22,8 +22,12 @@ export default function ContactPage() {
 
   const [search, setSearch] = useState("");
 
+  const [searchTwo, setSearchTwo] = useState("");
+
   const [addUserModal, setAddUserModal] = useState(false);
   const [userData, setUserData] = useState(null);
+
+  const [friendRequest, setFriendRequest] = useState({});
 
   const { send, wsStatus, subscribe } = useWebSocket();
 
@@ -78,6 +82,20 @@ export default function ContactPage() {
     },
   });
 
+  const addFriendUser = useMemo(() => {
+    const memberListData = Array.isArray(userList) ? userList : [];
+    if (!memberListData) return [];
+
+    return memberListData.filter((user) => {
+      const searchableText = [user.username]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(searchTwo.toLowerCase());
+    });
+  }, [userList, searchTwo]);
+
   useEffect(() => {
     const unsubscribe = subscribe((data) => {
       if (data.type === "friend_request") {
@@ -105,7 +123,7 @@ export default function ContactPage() {
     });
   };
 
-  // console.log(userId);
+  // console.log(userList);
 
   return (
     <main className="flex h-full w-full overflow-hidden overflow-y-auto ">
@@ -189,12 +207,16 @@ export default function ContactPage() {
                               className="h-10 w-10 rounded-full object-cover"
                               src={friend?.profile_picture}
                             />
-                            <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-0 top-7"></div>
+                            {friend?.is_online && (
+                              <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-0 top-7"></div>
+                            )}
                           </div>
                         ) : (
                           <div className="relative">
                             <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
-                            <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-0 top-7"></div>
+                            {friend?.is_online && (
+                              <div className="bg-green-500 border-3 border-white h-4 w-4 rounded-full absolute right-0 top-7"></div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -225,25 +247,31 @@ export default function ContactPage() {
                   <User className="h-20 w-20 bg-gray-200 text-gray-500 rounded-full p-3" />
                 </div>
               )}
-              <span className="font-semibold text-lg">{userData?.username}</span>
+              <span className="font-semibold text-lg">
+                {userData?.username}
+              </span>
             </div>
 
             <div className="w-full flex flex-col gap-4">
               <div className="flex flex-col items-center justify-center">
-              <span className="">{userData?.first_name ? userData?.first_name : "-"}</span>
-              <h1 className="text-gray-800 font-semibold">First Name</h1>
-              </div>
-               <div className="flex flex-col items-center justify-center">
-              <span className="">{userData?.last_name ? userData?.last_name : "-"}</span>
-              <h1 className="text-gray-800 font-semibold">Last Name</h1>
+                <span className="">
+                  {userData?.first_name ? userData?.first_name : "-"}
+                </span>
+                <h1 className="text-gray-800 font-semibold">First Name</h1>
               </div>
               <div className="flex flex-col items-center justify-center">
-              <span className="">{userData?.email ? userData?.email : "-"}</span>
-              <h1 className="text-gray-800 font-semibold">Email</h1>
+                <span className="">
+                  {userData?.last_name ? userData?.last_name : "-"}
+                </span>
+                <h1 className="text-gray-800 font-semibold">Last Name</h1>
+              </div>
+              <div className="flex flex-col items-center justify-center">
+                <span className="">
+                  {userData?.email ? userData?.email : "-"}
+                </span>
+                <h1 className="text-gray-800 font-semibold">Email</h1>
               </div>
             </div>
-
-            
           </div>
         ) : (
           <div>Choose user</div>
@@ -255,7 +283,7 @@ export default function ContactPage() {
           <div className="bg-white p-4 rounded-md shadow-2xl w-full max-w-lg">
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
-              <h1 className="font-bold sm:text-xl text-lg">Add Members</h1>
+              <h1 className="font-bold sm:text-xl text-lg">Add Users</h1>
             </div>
 
             <div className="w-full flex flex-col gap-5">
@@ -264,22 +292,66 @@ export default function ContactPage() {
                   Note: Send user friend request.
                 </p>
 
+                <div className="w-full">
+                  <input
+                    type="text"
+                    placeholder="Search User"
+                    value={searchTwo}
+                    onChange={(e) => setSearchTwo(e.target.value)}
+                    className="
+    mb-3 px-3 py-2 text-sm w-full
+    border border-gray-300 rounded-md
+    focus:outline-none focus:ring-2 focus:ring-blue-500
+  "
+                  />
+                </div>
+
                 <input type="hidden" name="sender" defaultValue={user.id} />
                 {/* <input type="hidden" name="receiver" defaultValue={userId} /> */}
 
-                {userList
+                {addFriendUser
                   ?.filter(
                     (u) => !userFriends.some((friend) => friend.id === u.id),
                   )
                   .map((userlist) => (
                     <div key={userlist.id} className="flex justify-between">
-                      <p>{userlist?.username}</p>
-                      <button
-                        type="button"
-                        onClick={() => submitFriendRequest(userlist.id)}
-                      >
-                        Add friend
-                      </button>
+                      <div className="flex gap-2 items-center">
+                        {userlist?.profile_picture ? (
+                          <div className="relative">
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={userlist?.profile_picture}
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <User className="h-10 w-10 bg-gray-200 text-gray-500 rounded-full p-3" />
+                          </div>
+                        )}
+
+                        <p className="font-semibold">{userlist.username}</p>
+                      </div>
+
+                      {friendRequest[userlist.id] ? (
+                        <span className="bg-gray-200 px-4 font-semibold p-2 rounded-md text-gray-600">
+                          Sent
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="bg-blue-500 text-white font-semibold px-4 p-2 rounded-md"
+                          onClick={() => {
+                            submitFriendRequest(userlist.id);
+
+                            setFriendRequest((prev) => ({
+                              ...prev,
+                              [userlist.id]: true,
+                            }));
+                          }}
+                        >
+                          Add friend
+                        </button>
+                      )}
                     </div>
                   ))}
               </form>
