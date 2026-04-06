@@ -194,13 +194,13 @@ export default function ContactPage() {
                       setUserData(friend);
                       setActiveConversation(true);
                     }}
-                    className="cursor-pointer flex gap-2"
+                    className="cursor-pointer mt-4 flex gap-2"
                   >
                     <div
                       key={friend.id}
-                      className="h-10 w-10 flex gap-2 items-center"
+                      className="h-10 w-10 flex gap-2 items-center "
                     >
-                      <div>
+                      <div className="">
                         {friend?.profile_picture ? (
                           <div className="relative">
                             <img
@@ -274,7 +274,7 @@ export default function ContactPage() {
             </div>
           </div>
         ) : (
-          <div>Choose user</div>
+          <div className="flex-1 flex items-center justify-center text-gray-400">Select user to view info</div>
         )}
       </section>
 

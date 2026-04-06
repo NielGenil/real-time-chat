@@ -121,7 +121,7 @@ export function NotificationProvider({ children }) {
   const markAllRead = useCallback(async () => {
     await markReadAllNotificationAPI(token);
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    queryClient.invalidateQueries(["notification-list"]);
+    // queryClient.invalidateQueries(["notification-list"]);
   }, [token, queryClient]);
 
   return (
