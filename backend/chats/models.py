@@ -1,3 +1,4 @@
+#chats/models.py
 from django.db import models
 from accounts.models import CustomUser
 
@@ -25,6 +26,3 @@ class Message(models.Model):
 
     class Meta:
         ordering = ["timestamp"]
-
-
-

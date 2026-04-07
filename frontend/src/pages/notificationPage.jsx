@@ -1,7 +1,7 @@
 import { Check, User } from "lucide-react";
 import { useNotification } from "../context/NotificationContext";
 import { useHelper } from "../hooks/useHelper";
-import { useState } from "react";
+
 
 export default function NotificationPage() {
   const { formattedDateTime } = useHelper();

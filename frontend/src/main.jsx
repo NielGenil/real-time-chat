@@ -9,11 +9,11 @@ import ChatPage from "./pages/chatPage.jsx";
 import ContactPage from "./pages/contactPage.jsx";
 import FriendRequestPage from "./pages/friendRequestPage.jsx";
 import { WebSocketProvider } from "./context/WebSocketContext.jsx";
-import NotificationPage from "./pages/notificationPAge.jsx";
 import { NotificationProvider } from "./context/NotificationContext.jsx";
 import { FriendRequestProvider } from "./context/FriendRequestContex.jsx";
 import { ChatProvider } from "./context/ChatContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
+import NotificationPage from "./pages/notificationPage.jsx";
 
 const queryClient = new QueryClient();
 
